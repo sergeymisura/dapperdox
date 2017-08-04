@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/dapperdox/dapperdox/config"
@@ -110,6 +111,7 @@ type Method struct {
 	OperationName   string
 	NavigationName  string
 	Path            string
+	Order           string
 	Consumes        []string
 	Produces        []string
 	PathParams      []Parameter
@@ -180,6 +182,12 @@ type Header struct {
 	Required                    bool
 	Enum                        []string
 }
+
+type ByOrderString []Method
+
+func (a ByOrderString) Len() int           { return len(a) }
+func (a ByOrderString) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByOrderString) Less(i, j int) bool { return a[i].Order < a[j].Order }
 
 // -----------------------------------------------------------------------------
 
@@ -349,12 +357,14 @@ func (c *APISpecification) Load(specLocation string, specHost string) error {
 			// If API was populated (will not be if tags do not match), add to set
 			if !groupingByTag && len(api.Methods) > 0 {
 				logger.Tracef(nil, "    + Adding %s\n", name)
+				sort.Sort(ByOrderString(api.Methods))
 				c.APIs = append(c.APIs, *api) // All APIs (versioned within)
 			}
 		}
 
 		if groupingByTag && len(api.Methods) > 0 {
 			logger.Tracef(nil, "    + Adding %s\n", name)
+			sort.Sort(ByOrderString(api.Methods))
 			c.APIs = append(c.APIs, *api) // All APIs (versioned within)
 		}
 	}
@@ -567,6 +577,11 @@ func (c *APISpecification) processMethod(api *APIGroup, pathItem *spec.PathItem,
 		navigationName = o.Summary
 	}
 
+	order := o.Summary
+	if o.Extensions["x-order"] != nil {
+		order = "!" + o.Extensions["x-order"].(string)
+	}
+
 	method := &Method{
 		ID:             CamelToKebab(id),
 		Name:           o.Summary,
@@ -576,6 +591,7 @@ func (c *APISpecification) processMethod(api *APIGroup, pathItem *spec.PathItem,
 		Responses:      make(map[int]Response),
 		NavigationName: navigationName,
 		OperationName:  operationName,
+		Order:          order,
 		APIGroup:       api,
 	}
 	if len(o.Consumes) > 0 {
