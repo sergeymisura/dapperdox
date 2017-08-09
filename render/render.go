@@ -163,8 +163,9 @@ func overlay(name string, data []interface{}) template.HTML { // TODO Will be sp
 		logger.Tracef(nil, "Applying overlay '%s'\n", overlay)
 		writer := HTMLWriter{h: bufio.NewWriter(&b)}
 
+		r := New()
 		// data is a single item array (though I've not figured out why yet!)
-		Render.HTML(writer, http.StatusOK, overlay, data[0], render.HTMLOptions{Layout: ""})
+		r.HTML(writer, http.StatusOK, overlay, data[0], render.HTMLOptions{Layout: ""})
 		writer.Flush()
 	}
 
